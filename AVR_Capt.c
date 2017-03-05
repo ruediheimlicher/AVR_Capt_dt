@@ -157,34 +157,37 @@ ISR(TIMER1_CAPT_vect)
    {
             // captured_value = ICR1;
       
-      
+      captAcounter++;
       // Oberer Wert?
         if (adckanal == COMP_ADC_PIN_B)
       {
+         //OSZIA_LO;
          captBcounter++;
          
          mittelwertB[mposB++] = ICR1;
          mposB &= 0x03;
          COMP_PORT &= ~(1<<COMP_DRIVE_PIN_A);
+         captured = 1;
+         OSZIA_HI;
       }
       
       // unterer Wert
       if (adckanal == COMP_ADC_PIN_A)
       {
          OSZIA_LO;
-         a = ICR1;
-         captAcounter++;
-         mittelwertA[mposA++] = ICR1;           // Ringbuffer fuer gleitenden Mittelwert
-         mposA &= 0x03;                         // position incrementieren
-         COMP_PORT &= ~(1<<COMP_DRIVE_PIN_A);   // auf 4 beschraenken
-      
-   //      adckanal = COMP_ADC_PIN_B;
-
+         mittelwertA[mposA++] = ICR1;// Ringbuffer fuer gleitenden Mittelwert, position incrementieren
+         
+         mposA &= 0x03;// auf 4 beschraenken
+         adckanal = COMP_ADC_PIN_B;
+         
+         ADMUX = COMP_ADC_PIN_B & 0x07; // 5
+         //TCNT1 = 0; // Nur Zeit bis level B messen
+         //OSZIA_HI;
       }
-      OSZIA_HI;
+      
        
-      TCNT1 = 0;
-      captured = 1;
+     //TCNT1 = 0;
+    //  captured = 1;
    }
    //TCNT1 = 0;
 }
@@ -280,9 +283,10 @@ int main (void)
             TCNT1 = 0;
             // Pin HI
             COMP_PORT |= (1<<COMP_DRIVE_PIN_A);
-            waitcounter=1;
+            waitcounter=0;
           //  OSZIA_LO;
-     //       while (!captured);
+            while (!captured);
+            /*
             while ((!captured) || (waitcounter < 0xFFA))
             {
                waitcounter++;
@@ -291,8 +295,9 @@ int main (void)
 
                
             }; // warten, captured wird in ISR gesetzt
+             */
             //OSZIA_HI;
-            _delay_us(100);
+            //_delay_us(100);
             /*
             captured_value=0;
             captured = 0;
@@ -306,11 +311,11 @@ int main (void)
             {
                waitcounter++;
             }; // warten, captured wird in ISR gesetzt
-            */
-            
+             
             lcd_gotoxy(16,1);
             lcd_putc('w');
             lcd_putint(waitcounter);
+            */
 
             lcd_gotoxy(16,0);
             lcd_putc('o');
@@ -318,17 +323,18 @@ int main (void)
             //               captured_value=0;
             
             lcd_gotoxy(0,0);
-            lcd_puts("chA:");
-            lcd_putint16(a);
-            //lcd_putint16(floatmittel(mittelwertA));
+            lcd_puts("A:");
+            lcd_putint16(floatmittel((void*)mittelwertA));
             
             lcd_gotoxy(0,1);
-            lcd_puts("cA:");
-            lcd_putint(captAcounter);
+            lcd_puts("B:");
+            lcd_putint16(floatmittel((void*)mittelwertB));
+            lcd_puts(" D:");
+            lcd_putint16(floatmittel((void*)mittelwertB)-floatmittel((void*)mittelwertA));
 
-            lcd_gotoxy(8,1);
-            lcd_puts("cB:");
-            lcd_putint(captBcounter);
+            //lcd_gotoxy(8,1);
+            //lcd_puts("cB:");
+            //lcd_putint(captBcounter);
 
             
             captured = 0;
